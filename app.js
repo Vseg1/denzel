@@ -31,62 +31,63 @@ async function sandbox(actor) {
     }
 }*/
 
-    app.listen(3000, () => {
-        MongoClient.connect(CONNECTION_URL, { useNewUrlParser: true }, (error, client) => {
-            if (error) {
-                throw error;
-            }
-            database = client.db(DATABASE_NAME);
-            collection = database.collection("people");
-            console.log("Connected to `" + DATABASE_NAME + "`!");
-        });
-    });
-
-    app.get("/movies", (request, response) => {
-        database.collection("movies").find({}).toArray((err, res) => {
-            if(err) return res.status(500).send(err);
-            response.send(res);
-        })
-    });
-
-    app.get("/movies/populate", (request, response) => {
-        try {
-            database.collection("movies").drop();
-            console.log("db dropped successfully");
+app.listen(3000, () => {
+    MongoClient.connect(CONNECTION_URL, { useNewUrlParser: true }, (error, client) => {
+        if (error) {
+            throw error;
         }
-        catch (e) {
-            console.log(e);
-        }
-        imdb.sandbox(DENZEL_IMDB_ID).then(movies => {
-            database.collection("movies").insertMany(movies, (err, res) => {
-                if(err) return status(500).send(err);
-                response.json(res);
-            });
-            
-        })
+        database = client.db(DATABASE_NAME);
+        collection = database.collection("people");
+        console.log("Connected to `" + DATABASE_NAME + "`!");
     });
+});
 
-    app.get("/movies/:id", (request, response) => {
-        database.collection("movies").findOne({ "id": request.params.id }, (err, res) => {
-            if(err) return status(500).send(err);
+app.get("/movies", (request, response) => {
+    database.collection("movies").find({}).toArray((err, res) => {
+        if (err) return res.status(500).send(err);
+        response.send(res);
+    })
+});
+
+app.get("/movies/populate", (request, response) => {
+    try {
+        database.collection("movies").drop();
+        console.log("db dropped successfully");
+    }
+    catch (e) {
+        console.log(e);
+    }
+    imdb.sandbox(DENZEL_IMDB_ID).then(movies => {
+        database.collection("movies").insertMany(movies, (err, res) => {
+            if (err) return status(500).send(err);
             response.json(res);
         });
+
+    })
+});
+
+app.get("/movies/search", (request, response) => {
+    var limit = Number(request.query.limit) || 5;
+    var metascore = Number(request.query.metascore) || 0;
+
+    database.collection("movies").aggregate([
+        { "$match": { "metascore": { "$gte": metascore } } },
+        { "$sample": { "size": limit } }
+    ]).toArray((err, res) => {
+        if (err) return status(500).send(err);
+        response.json({ "limit": limit, "metascore": metascore, "results": res });
+    })
+
+});
+
+app.get("/movies/:id", (request, response) => {
+    database.collection("movies").findOne({ "id": request.params.id }, (err, res) => {
+        if (err) return status(500).send(err);
+        response.json(res);
     });
+});
 
-    app.get("/movies/search", (request, response) => {
-        var limit = Number(request.query.limit) || 5;
-        var metascore = Number(request.query.metascore) || 70;
 
-        if(limit || metascore){
-            database.collection("movies").aggregate([
-                {"$match" : {"metascore" : {"$gte" : metascore}}},
-                {"$sample" : {"size" : limit}}
-            ]).toArray((err, res) =>{
-                if(err) return status(500).send(err);
-                response.json({"limit" : limit, "metascore" : metascore, "results" : res});
-            })
-        }
-    });
 
-    //a revoir
-    app.post("/movies/:id", (request, response) => {});
+//a revoir
+app.post("/movies/:id", (request, response) => { });
