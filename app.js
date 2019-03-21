@@ -13,23 +13,10 @@ app.use(BodyParser.urlencoded({ extended: true }));
 const CONNECTION_URL = "mongodb+srv://vseg1:Jesuila2209*@cluster0-vd3vq.mongodb.net/test?retryWrites=true";
 const DATABASE_NAME = "denzel";
 
-var app = Express();
-
 app.use(BodyParser.json());
 app.use(BodyParser.urlencoded({ extended: true }));
 
-var database, collection;
-/*
-async function sandbox(actor) {
-    try {
-        const movies = await imdb(actor);
-        resolve(movies);
-    }
-    catch (e) {
-        console.error(e);
-        process.exit(1);
-    }
-}*/
+var database;
 
 app.listen(3000, () => {
     MongoClient.connect(CONNECTION_URL, { useNewUrlParser: true }, (error, client) => {
@@ -37,7 +24,6 @@ app.listen(3000, () => {
             throw error;
         }
         database = client.db(DATABASE_NAME);
-        collection = database.collection("people");
         console.log("Connected to `" + DATABASE_NAME + "`!");
     });
 });
@@ -77,7 +63,6 @@ app.get("/movies/search", (request, response) => {
         if (err) return status(500).send(err);
         response.json({ "limit": limit, "metascore": metascore, "results": res });
     })
-
 });
 
 app.get("/movies/:id", (request, response) => {
@@ -88,6 +73,18 @@ app.get("/movies/:id", (request, response) => {
 });
 
 
+app.post("/movies/:id", (request, response) => {
+    var review = request.body.review;
+    var date = request.body.date;
 
-//a revoir
-app.post("/movies/:id", (request, response) => { });
+    database.collection("movies").update({"id": request.params.id},{ $set:
+      {"review": review,
+        "date": date
+      }
+    },(err, res) => {
+        if(err) {
+            return response.status(500).send(error);
+        }
+        response.send(res);
+    } );
+});
